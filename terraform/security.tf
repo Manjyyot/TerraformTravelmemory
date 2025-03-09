@@ -1,7 +1,7 @@
 resource "aws_security_group" "frontend_sg" {
   name        = "frontend_sg"
   description = "Security group for frontend server"
-  vpc_id      = "vpc-03c56cda94b8d7229"
+  vpc_id      = var.vpc_id
 
   ingress {
     from_port   = 80
@@ -20,7 +20,7 @@ resource "aws_security_group" "frontend_sg" {
   egress {
     from_port   = 0
     to_port     = 0
-    protocol    = "tcp"
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
@@ -28,7 +28,7 @@ resource "aws_security_group" "frontend_sg" {
 resource "aws_security_group" "backend_sg" {
   name        = "backend_sg"
   description = "Security group for backend server"
-  vpc_id      = "vpc-03c56cda94b8d7229"
+  vpc_id      = var.vpc_id
 
   ingress {
     from_port   = 8080
@@ -40,7 +40,7 @@ resource "aws_security_group" "backend_sg" {
   egress {
     from_port   = 0
     to_port     = 0
-    protocol    = "tcp"
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
@@ -48,7 +48,7 @@ resource "aws_security_group" "backend_sg" {
 resource "aws_security_group" "db_sg" {
   name        = "db_sg"
   description = "Security group for MongoDB instance"
-  vpc_id      = "vpc-03c56cda94b8d7229"
+  vpc_id      = var.vpc_id
 
   ingress {
     from_port   = 27017
@@ -60,7 +60,7 @@ resource "aws_security_group" "db_sg" {
   egress {
     from_port   = 0
     to_port     = 0
-    protocol    = "tcp"
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
