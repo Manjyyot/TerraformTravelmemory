@@ -2,78 +2,75 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'us-east-1'
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id') 
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key') 
+        TF_VAR_region = 'us-east-1' 
     }
 
     stages {
-        stage('Checkout Code') {
-            steps {
-                git branch: 'main', url: 'https://github.com/Manjyyot/TerraformTravelmemory.git'
-            }
-        }
-
-        stage('Provision Infrastructure') {
-            steps {
-                sh '''
-                cd terraform
-                terraform init
-                terraform apply -auto-approve
-                '''
-            }
-        }
-
-        stage('Deploy Backend') {
+        stage('Clone Repository') {
             steps {
                 script {
-                    def backend_ip = sh(script: "cd terraform && terraform output -raw backend_instance_ip", returnStdout: true).trim()
-                    def mongodb_ip = sh(script: "cd terraform && terraform output -raw mongodb_instance_ip", returnStdout: true).trim()
-
-                    sshCommand remote: [host: backend_ip, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: """
-                        sudo apt update -y
-                        sudo apt install -y nodejs npm git
-                        git clone https://github.com/Manjyyot/TerraformTravelmemory.git
-                        cd TerraformTravelmemory/backend
-                        echo "MONGO_URI=mongodb://${mongodb_ip}:27017/mydb" > .env
-                        echo "PORT=3000" >> .env
-                        npm install
-                        nohup node index.js > backend.log 2>&1 &
-                    """
+                    echo 'Cloning repository...'
+                    git url: 'https://github.com/Manjyyot/TerraformTravelmemory.git', branch: 'main'
                 }
             }
         }
 
-        stage('Deploy Frontend') {
+        stage('Setup AWS Credentials') {
             steps {
                 script {
-                    def frontend_ip = sh(script: "cd terraform && terraform output -raw frontend_instance_ip", returnStdout: true).trim()
-                    def backend_ip = sh(script: "cd terraform && terraform output -raw backend_instance_ip", returnStdout: true).trim()
-
-                    sshCommand remote: [host: frontend_ip, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: """
-                        sudo apt update -y
-                        sudo apt install -y nodejs npm git
-                        git clone https://github.com/Manjyyot/TerraformTravelmemory.git
-                        cd TerraformTravelmemory/frontend
-                        echo "export const API_URL = 'http://${backend_ip}:3000';" > src/url.js
-                        npm install
-                        npm start &
-                    """
+                    echo 'Configuring AWS credentials...'
+                    withEnv(["AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}", "AWS_DEFAULT_REGION=${TF_VAR_region}"]) {
+                        sh 'aws sts get-caller-identity' // Verify AWS credentials
+                    }
                 }
             }
         }
 
-        stage('Deploy MongoDB') {
+        stage('Terraform Init') {
             steps {
                 script {
-                    def mongodb_ip = sh(script: "cd terraform && terraform output -raw mongodb_instance_ip", returnStdout: true).trim()
-
-                    sshCommand remote: [host: mongodb_ip, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: """
-                        sudo apt update -y
-                        sudo apt install -y mongodb
-                        sudo systemctl start mongodb
-                        sudo systemctl enable mongodb
-                    """
+                    echo 'Initializing Terraform...'
+                    dir('terraform') {
+                        sh 'terraform init'
+                    }
                 }
             }
         }
-    }  
-}  
+
+        stage('Terraform Apply') {
+            steps {
+                script {
+                    echo 'Applying Terraform configuration...'
+                    dir('terraform') {
+                        sh 'terraform apply -auto-approve'
+                    }
+                }
+            }
+        }
+
+        stage('Retrieve Terraform Outputs') {
+            steps {
+                script {
+                    echo 'Fetching Terraform output values...'
+                    dir('terraform') {
+                        backend_ip = sh(script: "terraform output -raw backend_instance_ip", returnStdout: true).trim()
+                        frontend_ip = sh(script: "terraform output -raw frontend_instance_ip", returnStdout: true).trim()
+                    }
+                    echo "Backend IP: ${backend_ip}"
+                    echo "Frontend IP: ${frontend_ip}"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline executed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs for errors.'
+        }
+    }
+}
