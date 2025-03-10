@@ -22,7 +22,18 @@ install_unzip() {
 
 # Install AWS CLI
 install_aws_cli() {
-    curl "https://awscli.amazonaws.com/awscliv2-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    # Correct AWS CLI v2 download link
+    echo "Downloading AWS CLI..."
+    wget https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -O awscliv2.zip
+
+    # Check if the file is downloaded correctly
+    if [ ! -f "awscliv2.zip" ] || [ $(stat -c %s "awscliv2.zip") -lt 10000 ]; then
+        echo "AWS CLI zip file is missing or too small. Exiting."
+        exit 1
+    fi
+
+    # Unzip and install
+    echo "Unzipping AWS CLI..."
     unzip awscliv2.zip
     sudo ./aws/install
 }
@@ -48,7 +59,7 @@ install_terraform() {
 # Install Git
 install_git() {
     sudo apt update
-    sudo apt install git
+    sudo apt install git -y
 }
 
 # Install Jenkins
