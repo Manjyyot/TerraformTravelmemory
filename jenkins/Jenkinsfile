@@ -32,22 +32,11 @@ pipeline {
             }
         }
 
-        stage('Terraform Init') {
+        stage('Terraform Init & Apply') {
             steps {
                 script {
-                    echo 'Initializing Terraform...'
                     dir('terraform') {
                         sh 'terraform init'
-                    }
-                }
-            }
-        }
-
-        stage('Terraform Apply') {
-            steps {
-                script {
-                    echo 'Applying Terraform configuration...'
-                    dir('terraform') {
                         sh 'terraform apply -auto-approve'
                     }
                 }
@@ -57,15 +46,75 @@ pipeline {
         stage('Retrieve Terraform Outputs') {
             steps {
                 script {
-                    echo 'Fetching Terraform output values...'
                     dir('terraform') {
                         backend_ip = sh(script: "terraform output -raw backend_instance_ip", returnStdout: true).trim()
                         frontend_ip = sh(script: "terraform output -raw frontend_instance_ip", returnStdout: true).trim()
                         mongodb_ip = sh(script: "terraform output -raw mongodb_instance_ip", returnStdout: true).trim()
                     }
-                    echo "Backend IP: ${backend_ip}"
-                    echo "Frontend IP: ${frontend_ip}"
-                    echo "MongoDB IP: ${mongodb_ip}"
+                    echo "✅ Backend IP: ${backend_ip}"
+                    echo "✅ Frontend IP: ${frontend_ip}"
+                    echo "✅ MongoDB IP: ${mongodb_ip}"
+                }
+            }
+        }
+
+        stage('Deploy Backend') {
+            steps {
+                script {
+                    sshCommand remote: [
+                        host: backend_ip,
+                        user: 'ubuntu',
+                        identityFile: 'newManjyyot.pem',
+                        allowAnyHosts: true
+                    ], command: '''
+                        sudo apt update -y
+                        sudo apt install -y nodejs npm git
+                        git clone https://github.com/Manjyyot/TerraformTravelmemory.git
+                        cd TerraformTravelmemory/backend
+                        echo "MONGO_URI=mongodb://${mongodb_ip}:27017/mydb" > .env
+                        echo "PORT=3000" >> .env
+                        npm install
+                        nohup node index.js > backend.log 2>&1 &
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy Frontend') {
+            steps {
+                script {
+                    sshCommand remote: [
+                        host: frontend_ip,
+                        user: 'ubuntu',
+                        identityFile: 'newManjyyot.pem',
+                        allowAnyHosts: true
+                    ], command: '''
+                        sudo apt update -y
+                        sudo apt install -y nodejs npm git
+                        git clone https://github.com/Manjyyot/TerraformTravelmemory.git
+                        cd TerraformTravelmemory/frontend
+                        echo "export const API_URL = 'http://${backend_ip}:3000';" > src/url.js
+                        npm install
+                        npm start &
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy MongoDB') {
+            steps {
+                script {
+                    sshCommand remote: [
+                        host: mongodb_ip,
+                        user: 'ubuntu',
+                        identityFile: 'newManjyyot.pem',
+                        allowAnyHosts: true
+                    ], command: '''
+                        sudo apt update -y
+                        sudo apt install -y mongodb
+                        sudo systemctl start mongodb
+                        sudo systemctl enable mongodb
+                    '''
                 }
             }
         }
