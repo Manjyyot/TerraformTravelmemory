@@ -49,9 +49,6 @@ pipeline {
                         env.FRONTEND_IP = frontend_ip
                         env.MONGODB_IP = mongodb_ip
                     }
-                    echo "✅ Backend IP: ${env.BACKEND_IP}"
-                    echo "✅ Frontend IP: ${env.FRONTEND_IP}"
-                    echo "✅ MongoDB IP: ${env.MONGODB_IP}"
                 }
             }
         }
@@ -105,10 +102,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline executed successfully!'
+            echo 'Pipeline executed successfully!'
         }
         failure {
-            echo '❌ Pipeline failed. Check logs for errors.'
+            echo 'Pipeline failed. Check logs for errors.'
         }
     }
 }
