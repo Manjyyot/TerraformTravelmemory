@@ -61,24 +61,22 @@ pipeline {
         stage('Deploy Backend') {
             steps {
                 script {
-                    withCredentials([sshUserPrivateKey(credentialsId: 'newManjyyot.pem', keyFileVariable: 'PEM_FILE', usernameVariable: 'SSH_USER')]) {
-                        sshCommand remote: [
-                            name: 'Backend Server',  // Added the name field
-                            host: backend_ip,
-                            user: SSH_USER, // The username from the credential
-                            identityFile: PEM_FILE, // Automatically uses the injected PEM key
-                            allowAnyHosts: true
-                        ], command: '''
-                            sudo apt update -y
-                            sudo apt install -y nodejs npm git
-                            git clone https://github.com/Manjyyot/TerraformTravelmemory.git
-                            cd TerraformTravelmemory/backend
-                            echo "MONGO_URI=mongodb://${mongodb_ip}:27017/mydb" > .env
-                            echo "PORT=3000" >> .env
-                            npm install
-                            nohup node index.js > backend.log 2>&1 &
-                        '''
-                    }
+                    sshCommand remote: [
+                        name: 'Backend Server',  
+                        host: backend_ip,
+                        user: 'ubuntu',
+                        identityFile: 'newManjyyot.pem',
+                        allowAnyHosts: true
+                    ], command: '''
+                        sudo apt update -y
+                        sudo apt install -y nodejs npm git
+                        git clone https://github.com/Manjyyot/TerraformTravelmemory.git
+                        cd TerraformTravelmemory/backend
+                        echo "MONGO_URI=mongodb://${mongodb_ip}:27017/mydb" > .env
+                        echo "PORT=3000" >> .env
+                        npm install --legacy-peer-deps --force  # Force npm install for dependencies
+                        nohup node index.js > backend.log 2>&1 &
+                    '''
                 }
             }
         }
@@ -86,23 +84,21 @@ pipeline {
         stage('Deploy Frontend') {
             steps {
                 script {
-                    withCredentials([sshUserPrivateKey(credentialsId: 'newManjyyot.pem', keyFileVariable: 'PEM_FILE', usernameVariable: 'SSH_USER')]) {
-                        sshCommand remote: [
-                            name: 'Frontend Server',  // Added the name field
-                            host: frontend_ip,
-                            user: SSH_USER, // The username from the credential
-                            identityFile: PEM_FILE, // Automatically uses the injected PEM key
-                            allowAnyHosts: true
-                        ], command: '''
-                            sudo apt update -y
-                            sudo apt install -y nodejs npm git
-                            git clone https://github.com/Manjyyot/TerraformTravelmemory.git
-                            cd TerraformTravelmemory/frontend
-                            echo "export const API_URL = 'http://${backend_ip}:3000';" > src/url.js
-                            npm install
-                            npm start &
-                        '''
-                    }
+                    sshCommand remote: [
+                        name: 'Frontend Server',  
+                        host: frontend_ip,
+                        user: 'ubuntu',
+                        identityFile: 'newManjyyot.pem',
+                        allowAnyHosts: true
+                    ], command: '''
+                        sudo apt update -y
+                        sudo apt install -y nodejs npm git
+                        git clone https://github.com/Manjyyot/TerraformTravelmemory.git
+                        cd TerraformTravelmemory/frontend
+                        echo "export const API_URL = 'http://${backend_ip}:3000';" > src/url.js
+                        npm install --legacy-peer-deps --force  # Force npm install for dependencies
+                        npm start &
+                    '''
                 }
             }
         }
@@ -110,20 +106,18 @@ pipeline {
         stage('Deploy MongoDB') {
             steps {
                 script {
-                    withCredentials([sshUserPrivateKey(credentialsId: 'newManjyyot.pem', keyFileVariable: 'PEM_FILE', usernameVariable: 'SSH_USER')]) {
-                        sshCommand remote: [
-                            name: 'MongoDB Server',  // Added the name field
-                            host: mongodb_ip,
-                            user: SSH_USER, // The username from the credential
-                            identityFile: PEM_FILE, // Automatically uses the injected PEM key
-                            allowAnyHosts: true
-                        ], command: '''
-                            sudo apt update -y
-                            sudo apt install -y mongodb
-                            sudo systemctl start mongodb
-                            sudo systemctl enable mongodb
-                        '''
-                    }
+                    sshCommand remote: [
+                        name: 'MongoDB Server',  
+                        host: mongodb_ip,
+                        user: 'ubuntu',
+                        identityFile: 'newManjyyot.pem',
+                        allowAnyHosts: true
+                    ], command: '''
+                        sudo apt update -y
+                        sudo apt install -y mongodb
+                        sudo systemctl start mongodb
+                        sudo systemctl enable mongodb
+                    '''
                 }
             }
         }
