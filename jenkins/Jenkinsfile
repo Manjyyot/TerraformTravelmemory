@@ -1,71 +1,14 @@
 pipeline {
     agent any
-
-    environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
-        TF_VAR_region = 'us-east-1'
-    }
-
     stages {
-        stage('Clone Repository') {
-            steps {
-                script {
-                    echo 'Cloning repository...'
-                    git url: 'https://github.com/Manjyyot/TerraformTravelmemory.git', branch: 'main'
-                }
-            }
-        }
-
-        stage('Setup AWS Credentials') {
-            steps {
-                script {
-                    echo 'Configuring AWS credentials...'
-                    withEnv([ 
-                        "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}",
-                        "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}",
-                        "AWS_DEFAULT_REGION=${TF_VAR_region}"
-                    ]) {
-                        sh 'aws sts get-caller-identity'
-                    }
-                }
-            }
-        }
-
-        stage('Terraform Init & Apply') {
-            steps {
-                script {
-                    dir('terraform') {
-                        sh 'terraform init'
-                        sh 'terraform apply -auto-approve'
-                    }
-                }
-            }
-        }
-
-        stage('Retrieve Terraform Outputs') {
-            steps {
-                script {
-                    dir('terraform') {
-                        backend_ip = sh(script: "terraform output -raw backend_instance_ip", returnStdout: true).trim()
-                        frontend_ip = sh(script: "terraform output -raw frontend_instance_ip", returnStdout: true).trim()
-                        mongodb_ip = sh(script: "terraform output -raw mongodb_instance_ip", returnStdout: true).trim()
-                    }
-                    echo "Backend IP: ${backend_ip}"
-                    echo "Frontend IP: ${frontend_ip}"
-                    echo "MongoDB IP: ${mongodb_ip}"
-                }
-            }
-        }
-
         stage('Deploy Backend') {
             steps {
-                script {
+                withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', keyFileVariable: 'PEM_FILE')]) {
                     sshCommand remote: [
                         name: 'Backend Server',
-                        host: backend_ip,
+                        host: '54.162.188.83',  // Replace with actual server IP
                         user: 'ubuntu',
-                        identityFile: 'newManjyyot.pem',
+                        identityFile: PEM_FILE,
                         allowAnyHosts: true
                     ], command: '''
                         sudo apt update -y
@@ -79,67 +22,6 @@ pipeline {
                     '''
                 }
             }
-        }
-
-        stage('Deploy Frontend') {
-            steps {
-                script {
-                    withCredentials([file(credentialsId: 'newManjyyot.pem', variable: 'PEM_FILE')]) {
-                        sshCommand remote: [
-                            name: 'Frontend Server',
-                            host: frontend_ip,
-                            user: 'ubuntu',
-                            identityFile: PEM_FILE,
-                            allowAnyHosts: true
-                        ], command: '''
-                            sudo apt update -y
-                            sudo apt install -y nodejs npm git
-                            git clone https://github.com/Manjyyot/TerraformTravelmemory.git
-                            cd TerraformTravelmemory/frontend
-
-                            # Handle both frontend subdirectories
-                            cd public
-                            npm install --legacy-peer-deps --force
-                            cd ..
-
-                            cd src
-                            npm install --legacy-peer-deps --force
-                            cd ..
-
-                            # Start frontend
-                            npm start &
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage('Deploy MongoDB') {
-            steps {
-                script {
-                    sshCommand remote: [
-                        name: 'MongoDB Server',
-                        host: mongodb_ip,
-                        user: 'ubuntu',
-                        identityFile: 'newManjyyot.pem',
-                        allowAnyHosts: true
-                    ], command: '''
-                        sudo apt update -y
-                        sudo apt install -y mongodb
-                        sudo systemctl start mongodb
-                        sudo systemctl enable mongodb
-                    '''
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo 'Pipeline executed successfully!'
-        }
-        failure {
-            echo 'Pipeline failed. Check logs for errors.'
         }
     }
 }
