@@ -41,13 +41,9 @@ pipeline {
             steps {
                 script {
                     dir('terraform') {
-                        def backend_ip = sh(script: "terraform output -raw backend_instance_ip", returnStdout: true).trim()
-                        def frontend_ip = sh(script: "terraform output -raw frontend_instance_ip", returnStdout: true).trim()
-                        def mongodb_ip = sh(script: "terraform output -raw mongodb_instance_ip", returnStdout: true).trim()
-
-                        env.BACKEND_IP = backend_ip
-                        env.FRONTEND_IP = frontend_ip
-                        env.MONGODB_IP = mongodb_ip
+                        env.BACKEND_IP = sh(script: "terraform output -raw backend_instance_ip", returnStdout: true).trim()
+                        env.FRONTEND_IP = sh(script: "terraform output -raw frontend_instance_ip", returnStdout: true).trim()
+                        env.MONGODB_IP = sh(script: "terraform output -raw mongodb_instance_ip", returnStdout: true).trim()
                     }
                 }
             }
@@ -56,7 +52,7 @@ pipeline {
         stage('Deploy Backend') {
             steps {
                 script {
-                    sshCommand remote: [host: env.BACKEND_IP, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: '''
+                    sshCommand remote: [name: 'backend-server', host: env.BACKEND_IP, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: '''
                         sudo apt update -y
                         sudo apt install -y nodejs npm git
                         git clone https://github.com/Manjyyot/TerraformTravelmemory.git
@@ -73,7 +69,7 @@ pipeline {
         stage('Deploy Frontend') {
             steps {
                 script {
-                    sshCommand remote: [host: env.FRONTEND_IP, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: '''
+                    sshCommand remote: [name: 'frontend-server', host: env.FRONTEND_IP, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: '''
                         sudo apt update -y
                         sudo apt install -y nodejs npm git
                         git clone https://github.com/Manjyyot/TerraformTravelmemory.git
@@ -89,7 +85,7 @@ pipeline {
         stage('Deploy MongoDB') {
             steps {
                 script {
-                    sshCommand remote: [host: env.MONGODB_IP, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: '''
+                    sshCommand remote: [name: 'mongodb-server', host: env.MONGODB_IP, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: '''
                         sudo apt update -y
                         sudo apt install -y mongodb
                         sudo systemctl start mongodb
