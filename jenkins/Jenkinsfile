@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')  // AWS Access Key from Jenkins Credentials
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')  // AWS Secret Key from Jenkins Credentials
-        TF_VAR_region = 'us-east-1'  // AWS Region
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        TF_VAR_region = 'us-east-1'
     }
 
     stages {
@@ -17,31 +17,21 @@ pipeline {
         stage('Setup AWS Credentials') {
             steps {
                 script {
-                    echo 'Configuring AWS credentials...'
                     withEnv(["AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}", "AWS_DEFAULT_REGION=${TF_VAR_region}"]) {
-                        sh 'aws sts get-caller-identity'  // Verify AWS credentials
+                        sh 'aws sts get-caller-identity'
                     }
                 }
             }
         }
 
-        stage('Terraform Init') {
+        stage('Terraform Init & Apply') {
             steps {
                 script {
-                    echo 'Initializing Terraform...'
                     dir('terraform') {
-                        sh 'terraform init'
-                    }
-                }
-            }
-        }
-
-        stage('Terraform Apply') {
-            steps {
-                script {
-                    echo 'Applying Terraform configuration...'
-                    dir('terraform') {
-                        sh 'terraform apply -auto-approve'
+                        sh '''
+                        terraform init
+                        terraform apply -auto-approve
+                        '''
                     }
                 }
             }
@@ -50,15 +40,14 @@ pipeline {
         stage('Retrieve Terraform Outputs') {
             steps {
                 script {
-                    echo 'Fetching Terraform output values...'
                     dir('terraform') {
-                        env.BACKEND_IP = sh(script: "terraform output -raw backend_instance_ip", returnStdout: true).trim()
-                        env.FRONTEND_IP = sh(script: "terraform output -raw frontend_instance_ip", returnStdout: true).trim()
-                        env.MONGODB_IP = sh(script: "terraform output -raw mongodb_instance_ip", returnStdout: true).trim()
+                        backend_ip = sh(script: "terraform output -raw backend_instance_ip", returnStdout: true).trim()
+                        frontend_ip = sh(script: "terraform output -raw frontend_instance_ip", returnStdout: true).trim()
+                        mongodb_ip = sh(script: "terraform output -raw mongodb_instance_ip", returnStdout: true).trim()
                     }
-                    echo "Backend IP: ${env.BACKEND_IP}"
-                    echo "Frontend IP: ${env.FRONTEND_IP}"
-                    echo "MongoDB IP: ${env.MONGODB_IP}"
+                    echo "Backend IP: ${backend_ip}"
+                    echo "Frontend IP: ${frontend_ip}"
+                    echo "MongoDB IP: ${mongodb_ip}"
                 }
             }
         }
@@ -66,12 +55,12 @@ pipeline {
         stage('Deploy Backend') {
             steps {
                 script {
-                    sshCommand remote: [host: env.BACKEND_IP, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: '''
+                    sshCommand remote: [host: backend_ip, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: '''
                         sudo apt update -y
                         sudo apt install -y nodejs npm git
                         git clone https://github.com/Manjyyot/TerraformTravelmemory.git
                         cd TerraformTravelmemory/backend
-                        echo "MONGO_URI=mongodb://${MONGODB_IP}:27017/mydb" > .env
+                        echo "MONGO_URI=mongodb://${mongodb_ip}:27017/mydb" > .env
                         echo "PORT=3000" >> .env
                         npm install
                         nohup node index.js > backend.log 2>&1 &
@@ -83,12 +72,12 @@ pipeline {
         stage('Deploy Frontend') {
             steps {
                 script {
-                    sshCommand remote: [host: env.FRONTEND_IP, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: '''
+                    sshCommand remote: [host: frontend_ip, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: '''
                         sudo apt update -y
                         sudo apt install -y nodejs npm git
                         git clone https://github.com/Manjyyot/TerraformTravelmemory.git
                         cd TerraformTravelmemory/frontend
-                        echo "export const API_URL = 'http://${BACKEND_IP}:3000';" > src/url.js
+                        echo "export const API_URL = 'http://${backend_ip}:3000';" > src/url.js
                         npm install
                         npm start &
                     '''
@@ -99,7 +88,7 @@ pipeline {
         stage('Deploy MongoDB') {
             steps {
                 script {
-                    sshCommand remote: [host: env.MONGODB_IP, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: '''
+                    sshCommand remote: [host: mongodb_ip, user: 'ubuntu', identityFile: 'newManjyyot.pem'], command: '''
                         sudo apt update -y
                         sudo apt install -y mongodb
                         sudo systemctl start mongodb
@@ -112,10 +101,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline executed successfully!'
+            echo 'Pipeline executed successfully!'
         }
         failure {
-            echo '❌ Pipeline failed. Check logs for errors.'
+            echo 'Pipeline failed. Check logs for errors.'
         }
     }
 }
