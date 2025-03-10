@@ -50,29 +50,6 @@ pipeline {
             }
         }
 
-        stage('Deploy Backend') {
-            steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', keyFileVariable: 'PEM_FILE')]) {
-                    sshCommand remote: [
-                        name: 'Backend Server',
-                        host: backend_ip,
-                        user: 'ubuntu',
-                        identityFile: PEM_FILE,
-                        allowAnyHosts: true
-                    ], command: '''
-                        sudo apt update -y
-                        sudo apt install -y nodejs npm git
-                        git clone https://github.com/Manjyyot/TerraformTravelmemory.git
-                        cd TerraformTravelmemory/backend
-                        echo "MONGO_URI=mongodb://${mongodb_ip}:27017/mydb" > .env
-                        echo "PORT=3000" >> .env
-                        npm install --legacy-peer-deps --force
-                        nohup node index.js > backend.log 2>&1 &
-                    '''
-                }
-            }
-        }
-
         stage('Deploy Frontend') {
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', keyFileVariable: 'PEM_FILE')]) {
@@ -84,11 +61,19 @@ pipeline {
                         allowAnyHosts: true
                     ], command: '''
                         sudo apt update -y
-                        sudo apt install -y nodejs npm git
+                        sudo apt install -y nodejs npm git nginx
+                        
+                        sudo systemctl start nginx
+                        sudo systemctl enable nginx
+                        
+                        sudo mkdir -p /var/www/html
+                        sudo chmod -R 755 /var/www/html
+                        
                         git clone https://github.com/Manjyyot/TerraformTravelmemory.git
                         cd TerraformTravelmemory/frontend
                         npm install --legacy-peer-deps --force
                         npm run build
+                        
                         sudo cp -r build/* /var/www/html/
                         sudo systemctl restart nginx
                     '''
