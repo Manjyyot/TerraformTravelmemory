@@ -62,7 +62,7 @@ pipeline {
             steps {
                 script {
                     sshCommand remote: [
-                        name: 'Backend Server',  
+                        name: 'Backend Server',
                         host: backend_ip,
                         user: 'ubuntu',
                         identityFile: 'newManjyyot.pem',
@@ -74,7 +74,7 @@ pipeline {
                         cd TerraformTravelmemory/backend
                         echo "MONGO_URI=mongodb://${mongodb_ip}:27017/mydb" > .env
                         echo "PORT=3000" >> .env
-                        npm install --legacy-peer-deps --force  # Force npm install for dependencies
+                        npm install --legacy-peer-deps --force
                         nohup node index.js > backend.log 2>&1 &
                     '''
                 }
@@ -84,21 +84,32 @@ pipeline {
         stage('Deploy Frontend') {
             steps {
                 script {
-                    sshCommand remote: [
-                        name: 'Frontend Server',  
-                        host: frontend_ip,
-                        user: 'ubuntu',
-                        identityFile: 'newManjyyot.pem',
-                        allowAnyHosts: true
-                    ], command: '''
-                        sudo apt update -y
-                        sudo apt install -y nodejs npm git
-                        git clone https://github.com/Manjyyot/TerraformTravelmemory.git
-                        cd TerraformTravelmemory/frontend
-                        echo "export const API_URL = 'http://${backend_ip}:3000';" > src/url.js
-                        npm install --legacy-peer-deps --force  # Force npm install for dependencies
-                        npm start &
-                    '''
+                    withCredentials([file(credentialsId: 'newManjyyot.pem', variable: 'PEM_FILE')]) {
+                        sshCommand remote: [
+                            name: 'Frontend Server',
+                            host: frontend_ip,
+                            user: 'ubuntu',
+                            identityFile: PEM_FILE,
+                            allowAnyHosts: true
+                        ], command: '''
+                            sudo apt update -y
+                            sudo apt install -y nodejs npm git
+                            git clone https://github.com/Manjyyot/TerraformTravelmemory.git
+                            cd TerraformTravelmemory/frontend
+
+                            # Handle both frontend subdirectories
+                            cd public
+                            npm install --legacy-peer-deps --force
+                            cd ..
+
+                            cd src
+                            npm install --legacy-peer-deps --force
+                            cd ..
+
+                            # Start frontend
+                            npm start &
+                        '''
+                    }
                 }
             }
         }
@@ -107,7 +118,7 @@ pipeline {
             steps {
                 script {
                     sshCommand remote: [
-                        name: 'MongoDB Server',  
+                        name: 'MongoDB Server',
                         host: mongodb_ip,
                         user: 'ubuntu',
                         identityFile: 'newManjyyot.pem',
