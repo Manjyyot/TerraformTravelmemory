@@ -117,8 +117,6 @@ ssh -i your-key.pem ubuntu@mongodb-ip 'bash -s' < scripts/mongodb_setup.sh
 
 ---
 
----
-
 ### **3. Run the Jenkins Pipeline**
 The Jenkins pipeline is configured to **automatically trigger on a push to the `main` branch**.  
 
@@ -144,3 +142,6 @@ If needed, the pipeline can also be triggered manually from the **Jenkins Dashbo
 - **AWS Parameter Store** can be used for storing sensitive credentials.
 
 ---
+
+## **Conclusion**
+This project successfully automates the deployment of a **three-tier web application** using AWS, Terraform, and Jenkins. With Jenkins set up for **automated CI/CD**, every push to the `main` branch triggers an end-to-end deployment. The use of **shell scripts** simplifies instance setup and ensures a smooth deployment experience. 🎯
