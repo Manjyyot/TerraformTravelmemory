@@ -21,7 +21,7 @@ pipeline {
             steps {
                 script {
                     echo 'Configuring AWS credentials...'
-                    withEnv([
+                    withEnv([ 
                         "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}",
                         "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}",
                         "AWS_DEFAULT_REGION=${TF_VAR_region}"
@@ -51,9 +51,9 @@ pipeline {
                         frontend_ip = sh(script: "terraform output -raw frontend_instance_ip", returnStdout: true).trim()
                         mongodb_ip = sh(script: "terraform output -raw mongodb_instance_ip", returnStdout: true).trim()
                     }
-                    echo "✅ Backend IP: ${backend_ip}"
-                    echo "✅ Frontend IP: ${frontend_ip}"
-                    echo "✅ MongoDB IP: ${mongodb_ip}"
+                    echo "Backend IP: ${backend_ip}"
+                    echo "Frontend IP: ${frontend_ip}"
+                    echo "MongoDB IP: ${mongodb_ip}"
                 }
             }
         }
