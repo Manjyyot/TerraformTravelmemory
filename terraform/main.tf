@@ -3,12 +3,11 @@ provider "aws" {
 }
 
 resource "aws_instance" "mongodb_server" {
-  ami           = "ami-04b4f1a9cf54c11d0"
-  instance_type = "t2.micro"
-  subnet_id     = "subnet-0d43e28166c19ab9d"
-  key_name      = "newManjyyot"
-
-  vpc_security_group_ids = ["sg-0f9cc3bcfb3acb772"]
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = var.subnet_id
+  key_name               = var.key_name
+  vpc_security_group_ids = [var.security_group_id]
 
   tags = {
     Name = "MongoDB Server"
@@ -16,12 +15,11 @@ resource "aws_instance" "mongodb_server" {
 }
 
 resource "aws_instance" "frontend_server" {
-  ami           = "ami-04b4f1a9cf54c11d0"
-  instance_type = "t2.micro"
-  subnet_id     = "subnet-0d43e28166c19ab9d"
-  key_name      = "newManjyyot"
-
-  vpc_security_group_ids = ["sg-0f9cc3bcfb3acb772"]
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = var.subnet_id
+  key_name               = var.key_name
+  vpc_security_group_ids = [var.security_group_id]
 
   tags = {
     Name = "Frontend Server"
@@ -29,12 +27,11 @@ resource "aws_instance" "frontend_server" {
 }
 
 resource "aws_instance" "backend_server" {
-  ami           = "ami-04b4f1a9cf54c11d0"
-  instance_type = "t2.micro"
-  subnet_id     = "subnet-0d43e28166c19ab9d"
-  key_name      = "newManjyyot"
-
-  vpc_security_group_ids = ["sg-0f9cc3bcfb3acb772"]
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = var.subnet_id
+  key_name               = var.key_name
+  vpc_security_group_ids = [var.security_group_id]
 
   tags = {
     Name = "Backend Server"

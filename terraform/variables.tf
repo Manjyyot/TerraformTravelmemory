@@ -21,3 +21,20 @@ variable "subnet_id" {
   type        = string
   default     = "subnet-0edea208a0374a0bf"
 }
+variable "ami_id" {
+  description = "The AMI ID for the instances"
+  type        = string
+  default     = "ami-04b4f1a9cf54c11d0"
+}
+
+variable "instance_type" {
+  description = "Instance type for EC2"
+  type        = string
+  default     = "t2.micro"
+}
+
+variable "security_group_id" {
+  description = "Existing security group ID"
+  type        = string
+  default     = "sg-0f9cc3bcfb3acb772"
+}
