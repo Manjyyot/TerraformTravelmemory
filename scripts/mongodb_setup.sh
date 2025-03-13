@@ -1,20 +1,25 @@
 #!/bin/bash
 
-# Update system packages
+set -e  
+
+echo "Starting MongoDB setup..."
+
 sudo apt update -y
+sudo apt install -y gnupg curl
 
-# Install MongoDB
-sudo apt install -y mongodb
+if ! dpkg -l | grep -q "mongodb-org"; then
+    curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | sudo tee /etc/apt/trusted.gpg.d/mongodb-server-7.0.asc
+    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+    sudo apt update -y
+    sudo apt install -y mongodb-org
+fi
 
-# Enable and start MongoDB service
-sudo systemctl enable mongodb
-sudo systemctl start mongodb
+sudo systemctl start mongod
+sudo systemctl enable mongod
 
-# Verify MongoDB is running
-sudo systemctl status mongodb --no-pager
+sudo chown -R mongodb:mongodb /var/lib/mongodb
+sudo chmod -R 755 /var/lib/mongodb
 
-# Allow remote connections (Optional: If MongoDB should be accessed from other instances)
-sudo sed -i 's/^#bindIp: 127.0.0.1/bindIp: 0.0.0.0/' /etc/mongod.conf
+sudo systemctl status mongod --no-pager
 
-# Restart MongoDB service to apply changes
-sudo systemctl restart mongodb
+echo "MongoDB setup completed!"
