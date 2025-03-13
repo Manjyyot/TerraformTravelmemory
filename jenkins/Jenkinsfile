@@ -50,37 +50,6 @@ pipeline {
             }
         }
 
-        stage('Deploy Frontend') {
-            steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', keyFileVariable: 'PEM_FILE')]) {
-                    sshCommand remote: [
-                        name: 'Frontend Server',
-                        host: frontend_ip,
-                        user: 'ubuntu',
-                        identityFile: PEM_FILE,
-                        allowAnyHosts: true
-                    ], command: '''
-                        sudo apt update -y
-                        sudo apt install -y nodejs npm git nginx
-                        
-                        sudo systemctl start nginx
-                        sudo systemctl enable nginx
-                        
-                        sudo mkdir -p /var/www/html
-                        sudo chmod -R 755 /var/www/html
-                        
-                        git clone https://github.com/Manjyyot/TerraformTravelmemory.git
-                        cd TerraformTravelmemory/frontend
-                        npm install --legacy-peer-deps --force
-                        npm run build
-                        
-                        sudo cp -r build/* /var/www/html/
-                        sudo systemctl restart nginx
-                    '''
-                }
-            }
-        }
-
         stage('Deploy MongoDB') {
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', keyFileVariable: 'PEM_FILE')]) {
@@ -91,25 +60,42 @@ pipeline {
                         identityFile: PEM_FILE,
                         allowAnyHosts: true
                     ], command: '''
-                        sudo apt update -y
-                        sudo apt install -y gnupg curl
-                        
-                        if ! dpkg -l | grep -q "mongodb-org"; then
-                            curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | sudo tee /etc/apt/trusted.gpg.d/mongodb-server-7.0.asc
-                            echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-                            sudo apt update -y
-                            sudo apt install -y mongodb-org
-                        fi
+                        chmod +x TerraformTravelmemory/scripts/mongodb_setup.sh
+                        ./TerraformTravelmemory/scripts/mongodb_setup.sh
+                    '''
+                }
+            }
+        }
 
-                        sudo systemctl start mongod
-                        sudo systemctl enable mongod
-                        
-                        # Ensure MongoDB runs without permission issues
-                        sudo chown -R mongodb:mongodb /var/lib/mongodb
-                        sudo chmod -R 755 /var/lib/mongodb
+        stage('Deploy Backend') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', keyFileVariable: 'PEM_FILE')]) {
+                    sshCommand remote: [
+                        name: 'Backend Server',
+                        host: backend_ip,
+                        user: 'ubuntu',
+                        identityFile: PEM_FILE,
+                        allowAnyHosts: true
+                    ], command: '''
+                        chmod +x TerraformTravelmemory/scripts/backend_setup.sh
+                        ./TerraformTravelmemory/scripts/backend_setup.sh
+                    '''
+                }
+            }
+        }
 
-                        # Check MongoDB status
-                        sudo systemctl status mongod --no-pager
+        stage('Deploy Frontend') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', keyFileVariable: 'PEM_FILE')]) {
+                    sshCommand remote: [
+                        name: 'Frontend Server',
+                        host: frontend_ip,
+                        user: 'ubuntu',
+                        identityFile: PEM_FILE,
+                        allowAnyHosts: true
+                    ], command: '''
+                        chmod +x TerraformTravelmemory/scripts/frontend_setup.sh
+                        ./TerraformTravelmemory/scripts/frontend_setup.sh
                     '''
                 }
             }
