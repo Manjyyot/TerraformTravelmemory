@@ -1,18 +1,12 @@
 #!/bin/bash
 
-set -e  # Exit immediately if a command fails
+set -e  
 
 echo "Starting Backend setup..."
 
-# Update system packages
 sudo apt update -y
-sudo apt install -y git curl unzip
+sudo apt install -y nodejs npm git
 
-# Install Node.js & npm
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Clone the backend repository
 cd ~
 if [ -d "TerraformTravelmemory" ]; then
     cd TerraformTravelmemory && git pull
@@ -21,22 +15,14 @@ else
     cd TerraformTravelmemory
 fi
 
-# Navigate to the backend directory
 cd backend
 
-# Install backend dependencies
 npm install
 
-# Ensure the .env file exists
-if [ ! -f ".env" ]; then
-    cat <<EOF > .env
-MONGO_URI=mongodb://<MONGODB_IP>:27017/travelmemory
-PORT=5000
-EOF
-    echo ".env file created"
-fi
+echo "PORT=5000" > .env
+MONGO_IP=$(terraform output -raw mongodb_instance_ip)
+echo "MONGO_URI=mongodb://$MONGO_IP:27017/travelmemory" >> .env
 
-# Start backend server in background
-nohup npm run start > backend.log 2>&1 &
+node server.js &
 
 echo "Backend setup completed!"
