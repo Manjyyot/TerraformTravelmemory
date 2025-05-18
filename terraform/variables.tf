@@ -38,3 +38,9 @@ variable "security_group_id" {
   type        = string
   default     = "sg-0f9cc3bcfb3acb772"
 }
+
+variable "private_key_path" {
+  description = "Path to your PEM file for EC2 SSH access"
+  type        = string
+  default     = "keys/newManjyyot.pem"
+}
