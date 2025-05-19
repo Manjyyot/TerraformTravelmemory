@@ -1,147 +1,177 @@
-# Travel Memory
+# Travel Memory - Cloud Deployment (AWS + Terraform + Docker)
 
-`.env` file to work with the backend after creating a database in mongodb: 
+## Project Overview
 
-```
-MONGO_URI='ENTER_YOUR_URL'
+This project deploys a three-tier web application to AWS using Docker containers, Terraform for infrastructure-as-code, and manual provisioning scripts. It includes auto-scaling, high availability, and reverse proxy routing via Nginx.
+
+**Tech Stack:**
+- Frontend: React.js
+- Backend: Node.js/Express
+- Database: MongoDB
+- Infra: AWS (EC2, ECS Fargate, ALB, Auto Scaling)
+- IaC: Terraform
+- Containerization: Docker
+- Routing: Nginx reverse proxy
+
+---
+
+## Environment Setup
+
+### Backend `.env` File
+
+Create a `.env` file for the backend:
+```env
+MONGO_URI='your_mongo_uri'
 PORT=3001
 ```
 
-Data format to be added: 
+### Frontend `.env` File
 
-```json
-{
-    "tripName": "Incredible India",
-    "startDateOfJourney": "19-03-2022",
-    "endDateOfJourney": "27-03-2022",
-    "nameOfHotels":"Hotel Namaste, Backpackers Club",
-    "placesVisited":"Delhi, Kolkata, Chennai, Mumbai",
-    "totalCost": 800000,
-    "tripType": "leisure",
-    "experience": "Lorem Ipsum, Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum,Lorem Ipsum, ",
-    "image": "https://t3.ftcdn.net/jpg/03/04/85/26/360_F_304852693_nSOn9KvUgafgvZ6wM0CNaULYUa7xXBkA.jpg",
-    "shortDescription":"India is a wonderful country with rich culture and good people.",
-    "featured": true
-}
+```env
+REACT_APP_BACKEND_URL=http://your-backend-ip:3001
 ```
 
+---
 
-For frontend, you need to create `.env` file and put the following content (remember to change it based on your requirements):
+## Infrastructure Setup (Terraform)
+
+This project provisions:
+- VPC with public subnet
+- EC2 instances: MongoDB, Backend, Frontend (Docker-based)
+- ECS cluster (Fargate) for auto-scaling backend/frontend containers
+- ALB (Application Load Balancer) to route external traffic
+- Auto-scaling group to scale frontend/backend tasks
+- Security Groups to enforce traffic boundaries
+
+### Run Infrastructure:
+
 ```bash
-REACT_APP_BACKEND_URL=http://localhost:3001
-```
-
-# **Three-Tier Application Deployment with AWS, Terraform, and Jenkins**
-
-## **Project Overview**
-This project sets up and deploys a **three-tier web application** on **AWS** using **Terraform** for infrastructure provisioning and **Jenkins** for CI/CD automation.
-
-The application consists of:
-- **Frontend:** React.js (hosted on an EC2 instance)
-- **Backend:** Node.js API server (running on a separate EC2 instance)
-- **Database:** MongoDB (running on its own EC2 instance)
-
-To simplify deployment, **shell scripts** (`backend_setup.sh`, `frontend_setup.sh`, `mongodb_setup.sh`) are used to automate the installation of necessary dependencies.
-
----
-
-## **Infrastructure Setup**
-The following AWS resources are provisioned using Terraform:
-- **EC2 Instances**
-  - Frontend Server (React.js)
-  - Backend Server (Node.js)
-  - Database Server (MongoDB)
-- **Security Groups**
-  - Configured for proper network isolation
-- **Default VPC & Subnets**
-  - Used for simplicity
-- **Provisioning via Shell Scripts**
-  - Automates package installation and service configuration
-
----
-
-## **CI/CD Pipeline (Jenkins)**
-The Jenkins pipeline automates the following tasks:
-1. **Cloning the Application Code** from GitHub
-2. **Provisioning Infrastructure** using Terraform
-3. **Deploying the Backend, Frontend, and Database**
-4. **Testing & Validation**
-
-The **Jenkins pipeline** uses shell scripts to install required software and start services automatically.
-
----
-
-## **Deployment Steps**
-### **1. Infrastructure Setup using Terraform**
-```sh
 cd terraform
 terraform init
 terraform apply -auto-approve
 ```
-This provisions all required AWS resources.
 
-### **2. Configure EC2 Instances (Using Shell Scripts)**
-After Terraform creates the instances, the following shell scripts will configure each instance with the necessary dependencies and services.
-
-#### **Backend Setup**
-```sh
-ssh -i your-key.pem ubuntu@backend-ip 'bash -s' < scripts/backend_setup.sh
-```
-
-- Installs Node.js, npm, and required backend dependencies.
-- Clones the backend repository.
-- Configures environment variables (`.env`).
-- Starts the backend server using `nohup` to ensure it runs in the background.
-
-#### **Frontend Setup**
-```sh
-ssh -i your-key.pem ubuntu@frontend-ip 'bash -s' < scripts/frontend_setup.sh
-```
-
-- Installs Node.js, npm, and Nginx.
-- Clones the frontend repository.
-- Builds the frontend project.
-- Deploys frontend files to /var/www/html/.
-- Configures Nginx as a reverse proxy for serving the React frontend.
-- Restarts Nginx to apply changes.
-
-#### **MongoDB Setup**
-```sh
-ssh -i your-key.pem ubuntu@mongodb-ip 'bash -s' < scripts/mongodb_setup.sh
-```
-
-- Installs MongoDB and necessary dependencies.
-- Starts and enables the MongoDB service.
-- Configures MongoDB to accept connections only from the backend instance.
-- Ensures correct permissions and security settings.
+Outputs will include public IPs for:
+- MongoDB instance
+- Backend server
+- Frontend server
 
 ---
 
-### **3. Run the Jenkins Pipeline**
-The Jenkins pipeline is configured to **automatically trigger on a push to the `main` branch**.  
+## Docker Deployment (Automated)
 
-#### **CI/CD Workflow**
-1. **Developer pushes code to GitHub (`main` branch).**  
-2. **Jenkins automatically triggers the pipeline.**  
-3. **Pipeline stages:**
-   - Clones the latest code.
-   - Provisions AWS infrastructure using Terraform.
-   - Deploys the backend, frontend, and MongoDB using pre-configured shell scripts.
-
-#### **Manually Triggering the Pipeline (Optional)**
-If needed, the pipeline can also be triggered manually from the **Jenkins Dashboard**:
-- Go to **Jenkins → Pipeline Job**.
-- Click **"Build Now"**.
+Shell provisioning scripts automatically:
+- Install Docker
+- Clone the GitHub repo
+- Build and run containers for backend and frontend
+- Load environment variables from `.env` file
 
 ---
 
-## **Security Considerations**
-- **Security Groups** restrict traffic between tiers.
-- **MongoDB is secured** by allowing only the backend instance to connect.
-- **Environment Variables** are securely managed.
-- **AWS Parameter Store** can be used for storing sensitive credentials.
+## Nginx Reverse Proxy Configuration
+
+The frontend instance also runs an Nginx server to route traffic.
+
+### Nginx Config (default.conf):
+
+```nginx
+server {
+    listen 80;
+
+    location /api/ {
+        proxy_pass http://<backend_instance_ip>:3001/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location / {
+        proxy_pass http://localhost:80;
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
+
+Place this file inside the container at:
+```
+/etc/nginx/conf.d/default.conf
+```
+
+The container should be built with:
+```dockerfile
+FROM nginx:alpine
+COPY default.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/build /usr/share/nginx/html
+```
 
 ---
 
-## **Conclusion**
-This project successfully automates the deployment of a **three-tier web application** using AWS, Terraform, and Jenkins. With Jenkins set up for **automated CI/CD**, every push to the `main` branch triggers an end-to-end deployment. The use of **shell scripts** simplifies instance setup and ensures a smooth deployment experience. 🎯
+## ECS + ALB + Auto Scaling Setup
+
+The backend and frontend are containerized and deployed to ECS using Fargate. Terraform provisions:
+- ECS Cluster
+- Task Definitions (backend, frontend)
+- ECS Services connected to ALB
+- Target Groups + Health Checks
+- Auto-scaling based on CPU usage
+
+Auto-scaling configuration:
+- Min Tasks: 2
+- Max Tasks: 10
+- Target CPU Utilization: 60%
+
+ALB Listeners forward traffic:
+- Port 80 → Frontend Container
+- Port 80 `/api` route → Backend Container
+
+---
+
+## Output of Deployment
+
+After `terraform apply`, you get:
+- Public IP of MongoDB EC2
+- Public IP of Frontend EC2
+- Public IP of Backend EC2
+- ALB DNS Name for ECS services
+
+You can access the full app via:
+```
+http://<alb_dns_name>
+```
+
+---
+
+## Project Deliverables
+
+| Requirement | Implemented |
+|-------------|-------------|
+| Dockerized App | Yes |
+| MongoDB Setup | Yes (Docker on EC2) |
+| AWS Infra via Terraform | Yes |
+| ALB Integration | Yes |
+| ECS with Auto Scaling | Yes |
+| Nginx Reverse Proxy | Yes |
+| Environment Variables | Managed via .env |
+| Outputs | Terraform outputs IPs |
+| CI/CD | Optional, can be added |
+| Documentation | This README |
+
+---
+
+## Manual Access & Testing
+
+```bash
+# SSH into backend server
+ssh -i keys/newManjyyot.pem ubuntu@<backend_instance_ip>
+
+# Check running containers
+docker ps
+```
+
+---
+
+## Conclusion
+
+This deployment demonstrates a full production-grade environment for a containerized web app using AWS native services. Infrastructure is provisioned using Terraform, and app components are deployed using Docker with auto-scaling via ECS. Nginx provides routing and reverse proxy for a unified user experience.
